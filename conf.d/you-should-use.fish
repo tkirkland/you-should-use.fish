@@ -15,7 +15,7 @@
 #   YSU_IGNORED_GLOBAL_ALIASES - List of abbreviations to ignore
 
 # Plugin version
-set -g YSU_VERSION "2.0.0"
+set -g YSU_VERSION "1.0.0"
 
 # Enable the plugin
 # This sets up the event handlers (_ysu_on_preexec and _ysu_on_prompt)
