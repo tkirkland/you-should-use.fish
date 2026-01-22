@@ -70,6 +70,103 @@ else
         functions -e _ysu_deferred_init
     end
 
+    # Cache refresh trigger: abbreviation changes
+    # Detects when user adds or removes abbreviations and refreshes the cache
+    function _ysu_on_postexec --on-event fish_postexec --description "YSU postexec hook for cache refresh"
+        # $argv[1] contains the command that just ran
+        set -l cmd $argv[1]
+
+        # Check if an abbreviation command was executed
+        # Patterns: abbr -a, abbr --add, abbr -e, abbr --erase, abbr --rename
+        if string match -qr '^\s*abbr\s+(-a|--add|-e|--erase|--rename)\b' $cmd
+            # Refresh only the abbreviation cache for efficiency
+            _ysu_refresh_abbr_cache
+        end
+    end
+
+    # Helper function to refresh only abbreviation cache (faster than full init)
+    function _ysu_refresh_abbr_cache --description "Refresh abbreviation cache"
+        # Clear existing abbreviation cache
+        set -g _ysu_abbr_keys
+        set -g _ysu_abbr_values
+
+        # Parse abbr --show output
+        for line in (abbr --show 2>/dev/null)
+            # Try standard format: abbr -a -- key 'value'
+            set -l parts (string match -r "^abbr -a(?:\\s+-r)?\\s+--\\s+(\\S+)\\s+'(.*)'\$" $line)
+            if test (count $parts) -ge 3
+                set -a _ysu_abbr_keys $parts[2]
+                set -a _ysu_abbr_values $parts[3]
+                continue
+            end
+
+            # Try format without quotes: abbr -a -- key value
+            set parts (string match -r "^abbr -a(?:\\s+-r)?\\s+--\\s+(\\S+)\\s+(.*)\$" $line)
+            if test (count $parts) -ge 3
+                set -a _ysu_abbr_keys $parts[2]
+                set -a _ysu_abbr_values $parts[3]
+                continue
+            end
+
+            # Try older format: abbr key=value
+            set parts (string match -r "^abbr\\s+(\\S+)=(.*)\$" $line)
+            if test (count $parts) -ge 3
+                set -a _ysu_abbr_keys $parts[2]
+                set -l val $parts[3]
+                set val (string replace -r "^['\"](.*)['\"]\$" '$1' -- $val)
+                set -a _ysu_abbr_values $val
+            end
+        end
+    end
+
+    # Cache refresh trigger: directory changes for git aliases
+    # Git aliases may differ between repositories, so refresh when PWD changes
+    function _ysu_on_pwd_change --on-variable PWD --description "YSU PWD change hook for git cache refresh"
+        # Check if we're in a git repository and the repo root changed
+        set -l current_git_root (git rev-parse --show-toplevel 2>/dev/null)
+
+        # Store and compare to previous git root
+        if test -n "$current_git_root"
+            if test "$current_git_root" != "$_ysu_last_git_root"
+                set -g _ysu_last_git_root $current_git_root
+                # Refresh only the git alias cache
+                _ysu_refresh_git_cache
+            end
+        else
+            # Not in a git repo anymore
+            if set -q _ysu_last_git_root
+                set -e _ysu_last_git_root
+                # Clear git alias cache
+                set -g _ysu_git_alias_keys
+                set -g _ysu_git_alias_values
+            end
+        end
+    end
+
+    # Helper function to refresh only git alias cache (faster than full init)
+    function _ysu_refresh_git_cache --description "Refresh git alias cache"
+        # Clear existing git alias cache
+        set -g _ysu_git_alias_keys
+        set -g _ysu_git_alias_values
+
+        # Parse git aliases
+        for line in (git config --get-regexp "^alias\..+\$" 2>/dev/null | sort)
+            set -l parts (string match -r '^alias\.(\S+)\s+(.*)$' $line)
+            if test (count $parts) -ge 3
+                set -a _ysu_git_alias_keys $parts[2]
+                set -a _ysu_git_alias_values $parts[3]
+            else
+                # Fallback for edge cases
+                set -l key_part (string replace -r '^alias\.' '' -- (string split -m 1 ' ' $line)[1])
+                set -l val_part (string split -m 1 ' ' $line)[2]
+                if test -n "$key_part"
+                    set -a _ysu_git_alias_keys $key_part
+                    set -a _ysu_git_alias_values $val_part
+                end
+            end
+        end
+    end
+
     # Mark plugin as enabled
     set -g _ysu_enabled 1
 end
