@@ -40,9 +40,14 @@ function enable_you_should_use --description "Enable the you-should-use plugin"
         end
     end
 
-    # Initialize the alias/abbreviation cache
-    if functions -q _ysu_init_cache
-        _ysu_init_cache
+    # Deferred cache initialization - runs on first prompt after all config loads
+    function _ysu_deferred_init --on-event fish_prompt --description "Deferred YSU cache init"
+        if not set -q _ysu_cache_initialized
+            if functions -q _ysu_init_cache
+                _ysu_init_cache
+            end
+        end
+        functions -e _ysu_deferred_init  # self-destruct after first run
     end
 
     # Mark plugin as enabled
