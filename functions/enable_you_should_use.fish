@@ -9,15 +9,12 @@ function enable_you_should_use --description "Enable the you-should-use plugin"
     # Define the preexec event handler
     # This runs before each command is executed
     function _ysu_on_preexec --on-event fish_preexec --description "YSU preexec hook"
-        # $argv[1] contains the command line
         set -l typed $argv[1]
 
-        # Skip if cache not initialized
         if not set -q _ysu_cache_initialized
             return
         end
 
-        # Check all alias types
         if functions -q _ysu_check_aliases
             _ysu_check_aliases $typed
         end

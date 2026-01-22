@@ -28,7 +28,6 @@ else
 
     # Preexec event handler - runs before each command
     function _ysu_on_preexec --on-event fish_preexec --description "YSU preexec hook"
-        # $argv[1] contains the command line
         set -l typed $argv[1]
 
         # Skip if cache not initialized

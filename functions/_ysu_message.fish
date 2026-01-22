@@ -34,8 +34,7 @@ function _ysu_buffer_flush --description "Flush the YSU message buffer to stderr
     # Only output if buffer has content
     if test -n "$_YSU_BUFFER"
         # Output buffer content to stderr
-        # Using printf with %s to handle escape codes properly
-        printf "%s" $_YSU_BUFFER >&2
+        printf "%b" $_YSU_BUFFER >&2
         # Clear the buffer
         set -g _YSU_BUFFER ""
     end
@@ -78,7 +77,6 @@ function _ysu_message --description "Format and display alias reminder message"
     if functions -q _ysu_buffer_write
         _ysu_buffer_write "$MESSAGE\n"
     else
-        # Direct output to stderr for standalone testing
         printf "%s\n" $MESSAGE >&2
     end
 end
