@@ -1,6 +1,46 @@
 # Message formatting function for you-should-use Fish plugin
 # Ported from ysu.zsh ysu_message function
 
+# Buffer system for message positioning
+# Writing to a buffer rather than directly to stdout/stderr allows us to decide
+# if we want to write the reminder message before or after a command has been executed
+
+function _ysu_buffer_write --description "Write message to YSU buffer, conditionally flush based on position"
+    # Append content to global buffer
+    set -g _YSU_BUFFER "$_YSU_BUFFER$argv[1]"
+
+    # Maintain historical behaviour by default (before)
+    set -l position before
+    if set -q YSU_MESSAGE_POSITION
+        set position $YSU_MESSAGE_POSITION
+    end
+
+    # Color definitions for error message
+    set -l NONE (set_color normal)
+    set -l BOLD (set_color --bold)
+    set -l RED (set_color red)
+
+    if test "$position" = before
+        _ysu_buffer_flush
+    else if test "$position" != after
+        # Unknown position value - show error and flush
+        printf "%s%sUnknown value for YSU_MESSAGE_POSITION '%s'. Expected value 'before' or 'after'%s\n" $BOLD $RED $position $NONE >&2
+        _ysu_buffer_flush
+    end
+    # If position is "after", don't flush - will be flushed by precmd hook
+end
+
+function _ysu_buffer_flush --description "Flush the YSU message buffer to stderr"
+    # Only output if buffer has content
+    if test -n "$_YSU_BUFFER"
+        # Output buffer content to stderr
+        # Using printf with %s to handle escape codes properly
+        printf "%s" $_YSU_BUFFER >&2
+        # Clear the buffer
+        set -g _YSU_BUFFER ""
+    end
+end
+
 function _ysu_message --description "Format and display alias reminder message"
     # Color definitions using Fish native set_color
     set -l NONE (set_color normal)
@@ -34,8 +74,7 @@ function _ysu_message --description "Format and display alias reminder message"
     set MESSAGE (string replace --all '%command' $command_arg -- $MESSAGE)
     set MESSAGE (string replace --all '%alias' $alias_arg -- $MESSAGE)
 
-    # Output to buffer (or directly to stderr if buffer system not yet initialized)
-    # Buffer system will be added in subtask-1-3
+    # Output to buffer (flushes immediately if position=before, or waits for precmd if position=after)
     if functions -q _ysu_buffer_write
         _ysu_buffer_write "$MESSAGE\n"
     else
