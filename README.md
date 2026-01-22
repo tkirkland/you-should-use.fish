@@ -17,13 +17,13 @@ cp -r functions/* ~/.config/fish/functions/
 ### Fisher
 
 ```fish
-fisher install me/ysu.fish
+fisher install tkirkland/you-should-use.fish
 ```
 
 ### Oh My Fish
 
 ```fish
-omf install me/ysu.fish
+omf install tkirkland/you-should-use.fish
 ```
 
 ## Usage
